@@ -1,0 +1,20 @@
+[MESSAGES CONTROL]
+disable = C0114,  # missing-module-docstring
+          C0115,  # missing-class-docstring
+          C0116,  # missing-function-docstring
+          W0613, # unused-argument
+
+[MISCELLANEOUS]
+notes=XXX
+
+[MASTER]
+extension-pkg-whitelist=pydantic
+init-hook='import sys; sys.path.append("./")'
+
+
+[FORMAT]
+max-line-length=88
+
+
+[TYPECHECK]
+ignored-modules=cv2

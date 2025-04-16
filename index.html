@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Captura de Tela Remota</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        #remoteVideo {
+            width: 100%;
+            max-width: 1280px;
+            border: 2px solid #333;
+            display: block;
+            margin: 20px auto;
+        }
+        #controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #status {
+            text-align: center;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Teste de Captura de Tela Remota</h1>
+    <div id="status">Desconectado</div>
+    <video id="remoteVideo" autoplay playsinline></video>
+    <div id="controls">
+        <button id="startButton">Iniciar Streaming</button>
+    </div>
+
+    <script>
+        const startButton = document.getElementById('startButton');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const statusDiv = document.getElementById('status');
+        let pc;
+
+        startButton.addEventListener('click', start);
+
+        async function start() {
+            statusDiv.textContent = "Conectando...";
+            startButton.disabled = true;
+
+            try {
+                pc = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                });
+
+                pc.addEventListener('track', (event) => {
+                    if (event.track.kind === 'video') {
+                        remoteVideo.srcObject = event.streams[0];
+                        statusDiv.textContent = "Conectado - Recebendo stream";
+                    }
+                });
+
+                pc.addEventListener('iceconnectionstatechange', () => {
+                    if (pc.iceConnectionState === 'failed' ||
+                        pc.iceConnectionState === 'disconnected' ||
+                        pc.iceConnectionState === 'closed') {
+                        statusDiv.textContent = "Desconectado";
+                        startButton.disabled = false;
+                    }
+                });
+
+                const offer = await pc.createOffer({
+                    offerToReceiveVideo: true,
+                    offerToReceiveAudio: false
+                });
+                await pc.setLocalDescription(offer);
+
+                const response = await fetch('/offer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sdp: pc.localDescription.sdp,
+                        type: pc.localDescription.type
+                    })
+                });
+
+                const answer = await response.json();
+                await pc.setRemoteDescription(answer);
+                statusDiv.textContent = "Conectado - Estabelecendo stream";
+
+            } catch (e) {
+                console.error("Erro:", e);
+                statusDiv.textContent = "Erro ao conectar";
+                startButton.disabled = false;
+            }
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (pc) {
+                pc.close();
+            }
+        });
+    </script>
+</body>
+</html>
